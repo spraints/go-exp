@@ -4,6 +4,7 @@ import (
   "fmt"
   "io"
   "log"
+  "os"
   "os/exec"
   "time"
 )
@@ -40,13 +41,55 @@ type Changeset struct {
   Changes []Change
 }
 
+type TFS struct {
+  repositoryServiceUrl string
+  username string
+  password string
+}
+
+func (tfs *TFS) FetchChangesets(changesets chan<- *Changeset) {
+  start := 1
+  max := 256
+  for {
+    maxChangeset := tfs.QueryHistory("$/CRST", start, max, changesets)
+    if maxChangeset == -1 {
+      break;
+    } else {
+      start = maxChangeset + 1
+    }
+  }
+}
+
+func (tfs *TFS) QueryHistory(path string, start, max int, changesets chan<- *Changeset) int {
+  requestXml := "<itemSpec item=\"" + path + "\" recurse=\"Full\" did=\"0\"/>"
+  requestXml += "<versionItem xsi:type=\"LatestVersionSpec\"/>"
+  requestXml += fmt.Sprintf("<versionFrom xsi:type=\"ChangesetVersionSpec\" cs=\"%d\"/>", start)
+  requestXml += fmt.Sprintf("<maxCount>%d</maxCount>", max)
+  requestXml += "<includeFiles>true</includeFiles>"
+  requestXml += "<generateDownloadUrls>true</generateDownloadUrls>"
+  requestXml += "<slotMode>true</slotMode>"
+  requestXml += "<sortAscending>true</sortAscending>"
+  responseXml := tfs.Soap("QueryHistory", requestXml)
+  fmt.Println(responseXml)
+  return -1
+}
+
+func (tfs *TFS) Soap(action, xml string) string {
+  xml = "<?xml version=\"1.0\"?>" +
+    "<soap:Envelope xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns=\"http://schemas.microsoft.com/TeamFoundation/2005/06/VersionControl/ClientServices/03\">" +
+    "<soap:Body>" +
+    "<" + action + ">" + xml + "</" + action + ">" +
+    "</soap:Body>" +
+    "</soap:Envelope>"
+  return xml
+}
+
 func FetchChangesets(changesets chan<- *Changeset) {
-  changeset := new(Changeset)
-  changeset.Author.Name = "Matt Burke"
-  changeset.Author.Email = "spraints@gmail.com"
-  changeset.Date = time.Now()
-  changeset.Message = "Hi!"
-  changesets <- changeset
+  tfs := new(TFS)
+  tfs.repositoryServiceUrl = "https://tfs.codeplex.com/tfs/TFS04/Services/1.0/repository.asmx"
+  tfs.username = os.Getenv("TFS_USERNAME")
+  tfs.password = os.Getenv("TFS_PASSWORD")
+  tfs.FetchChangesets(changesets)
   close(changesets)
 }
 
