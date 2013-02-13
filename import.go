@@ -14,8 +14,8 @@ type Writer struct {
 }
 
 func (w *Writer) WriteLines(lines ...string) {
-  for i := range lines {
-    io.WriteString(w, lines[i] + "\n")
+  for _, line := range lines {
+    io.WriteString(w, line + "\n")
   }
 }
 
@@ -102,8 +102,8 @@ func ConvertChangesets(changesets <-chan *Changeset, importData chan<- []byte) {
       "data <<END_OF_COMMIT_MESSAGE_FI",
       changeset.Message,
       "END_OF_COMMIT_MESSAGE_FI")
-    for i := range changeset.Changes {
-      changeset.Changes[i].Apply(writer)
+    for _, change := range changeset.Changes {
+      change.Apply(writer)
     }
     writer.WriteLines("")
   }
