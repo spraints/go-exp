@@ -81,6 +81,8 @@ func (tfs *TFS) Soap(action, xml string) string {
     "<" + action + ">" + xml + "</" + action + ">" +
     "</soap:Body>" +
     "</soap:Envelope>"
+  // todo
+  // maybe this will help? https://gist.github.com/bemasher/1224702
   return xml
 }
 
